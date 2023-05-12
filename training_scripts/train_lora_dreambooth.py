@@ -82,8 +82,8 @@ class DreamBoothDataset(Dataset):
         self.prompts = []
         for prompt in self.prompts_path:
             with open(prompt, "r") as f:
-                self.prompts.append(f.readlines())
-        print(self.prompts)
+                self.prompts.append(f.read())
+        # print(self.prompts)
         self.num_instance_images = len(self.instance_images_path)
         # self.instance_prompt = instance_prompt
         self._length = self.num_instance_images

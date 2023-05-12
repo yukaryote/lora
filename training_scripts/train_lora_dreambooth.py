@@ -9,6 +9,7 @@ import os
 import inspect
 from pathlib import Path
 from typing import Optional
+import json
 
 import torch
 import torch.nn.functional as F
@@ -57,7 +58,7 @@ class DreamBoothDataset(Dataset):
     def __init__(
         self,
         instance_data_root,
-        instance_prompt,
+        # instance_prompt,
         tokenizer,
         class_data_root=None,
         class_prompt=None,
@@ -76,9 +77,15 @@ class DreamBoothDataset(Dataset):
         if not self.instance_data_root.exists():
             raise ValueError("Instance images root doesn't exists.")
 
-        self.instance_images_path = list(Path(instance_data_root).iterdir())
+        self.instance_images_path = sorted(list(Path.joinpath(Path(instance_data_root), "target").iterdir()))
+        self.prompts_path = sorted(list(Path.joinpath(Path(instance_data_root), "prompts").iterdir()))
+        self.prompts = []
+        for prompt in self.prompts_path:
+            with open(prompt, "r") as f:
+                self.prompts.append(f.readlines())
+        print(self.prompts)
         self.num_instance_images = len(self.instance_images_path)
-        self.instance_prompt = instance_prompt
+        # self.instance_prompt = instance_prompt
         self._length = self.num_instance_images
 
         if class_data_root is not None:
@@ -118,11 +125,13 @@ class DreamBoothDataset(Dataset):
         instance_image = Image.open(
             self.instance_images_path[index % self.num_instance_images]
         )
+        prompt = self.prompts[index]
         if not instance_image.mode == "RGB":
             instance_image = instance_image.convert("RGB")
         example["instance_images"] = self.image_transforms(instance_image)
         example["instance_prompt_ids"] = self.tokenizer(
-            self.instance_prompt,
+            prompt,
+            # self.instance_prompt,
             padding="do_not_pad",
             truncation=True,
             max_length=self.tokenizer.model_max_length,
@@ -207,6 +216,7 @@ def parse_args(input_args=None):
         required=False,
         help="A folder containing the training data of class images.",
     )
+    '''
     parser.add_argument(
         "--instance_prompt",
         type=str,
@@ -214,6 +224,7 @@ def parse_args(input_args=None):
         required=True,
         help="The prompt with identifier specifying the instance",
     )
+    '''
     parser.add_argument(
         "--class_prompt",
         type=str,
@@ -681,7 +692,7 @@ def main(args):
 
     train_dataset = DreamBoothDataset(
         instance_data_root=args.instance_data_dir,
-        instance_prompt=args.instance_prompt,
+        # instance_prompt=args.instance_prompt,
         class_data_root=args.class_data_dir if args.with_prior_preservation else None,
         class_prompt=args.class_prompt,
         tokenizer=tokenizer,
